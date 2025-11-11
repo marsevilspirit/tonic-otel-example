@@ -1,7 +1,7 @@
 [package]
 name = "tonic_helloworld"
 version = "0.1.0"
-edition = "2024"
+edition = "2021"
 
 [[bin]] # Bin to run the HelloWorld gRPC server
 name = "helloworld-server"
@@ -12,6 +12,7 @@ name = "helloworld-client"
 path = "src/client.rs"
 
 [dependencies]
+http = "1.0"
 tonic = "*"
 prost = "0.14"
 tonic-prost = "*"
@@ -24,6 +25,7 @@ opentelemetry =  "0.31"
 tracing-opentelemetry = "0.32"
 opentelemetry_sdk = { version = "0.31", features = ["rt-tokio"] }
 opentelemetry-otlp = { version = "0.31", features = ["grpc-tonic"] }
+opentelemetry-http = "0.31"
 opentelemetry-appender-tracing = { version = "0.31", features = ["experimental_use_tracing_span_context"] }
 
 opentelemetry-semantic-conventions = { version = "0.31.0", features = [

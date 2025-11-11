@@ -1,26 +1,62 @@
+use std::str::FromStr;
+
+use opentelemetry::{propagation::Injector, trace::TracerProvider};
 use opentelemetry::KeyValue;
-use opentelemetry::trace::TracerProvider;
-use opentelemetry_sdk::{Resource, trace::SdkTracerProvider};
+use opentelemetry_sdk::{propagation::TraceContextPropagator, trace::SdkTracerProvider, Resource};
 use opentelemetry_semantic_conventions::{
-    SCHEMA_URL,
     attribute::{DEPLOYMENT_ENVIRONMENT_NAME, SERVICE_VERSION},
+    SCHEMA_URL,
 };
 
-use tracing::{Level, info, instrument};
-use tracing_opentelemetry::OpenTelemetryLayer;
+use tonic::metadata::{MetadataKey, MetadataMap};
+
+use tracing::{info, instrument, Level};
+use tracing_opentelemetry::{OpenTelemetryLayer, OpenTelemetrySpanExt};
 use tracing_subscriber::prelude::*;
 
-use hello_world::HelloRequest;
 use hello_world::greeter_client::GreeterClient;
+use hello_world::HelloRequest;
 
 pub mod hello_world {
     tonic::include_proto!("helloworld");
 }
 
+#[instrument(fields(otel.kind = "client", otel.name = "test.helloworld/CallSayHello"))]
+async fn call_service() -> Result<(), Box<dyn std::error::Error>> {
+    let mut client = GreeterClient::connect("http://127.0.0.1:50051").await?;
+
+    let mut request = tonic::Request::new(HelloRequest {
+        name: "Tonic".into(),
+    });
+
+    opentelemetry::global::get_text_map_propagator(|propagator| {
+        let context = tracing::Span::current().context();
+        propagator.inject_context(&context, &mut MetadataInjector(request.metadata_mut()));
+    });
+
+    info!("inject_span_context, req: {:?}", request.metadata());
+    // 检查 traceparent 是否存在
+    if let Some(traceparent) = request.metadata().get("traceparent") {
+        info!("traceparent header: {:?}", traceparent);
+    }
+
+    let response = client.say_hello(request).await?;
+
+    info!("RESPONSE={:?}", response);
+
+    Ok(())
+}
+
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let _guard = init_tracing_subscriber();
+    call_service().await
+}
+
 // Create a Resource that captures information about the entity for which telemetry is recorded.
 fn resource() -> Resource {
     Resource::builder()
-        .with_service_name(env!("CARGO_PKG_NAME"))
+        .with_service_name("helloworld-client")
         .with_schema_url(
             [
                 KeyValue::new(SERVICE_VERSION, env!("CARGO_PKG_VERSION")),
@@ -45,6 +81,8 @@ fn init_tracer_provider() -> SdkTracerProvider {
 
 fn init_tracing_subscriber() -> OtelGuard {
     let tracer_provider = init_tracer_provider();
+
+    opentelemetry::global::set_text_map_propagator(TraceContextPropagator::new());
 
     let tracer = tracer_provider.tracer("tracing-otel-subscriber");
 
@@ -73,20 +111,16 @@ impl Drop for OtelGuard {
     }
 }
 
-#[instrument]
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let _guard = init_tracing_subscriber();
+// 实现 TextMap 接口以注入 metadata
+pub struct MetadataInjector<'a>(&'a mut MetadataMap);
 
-    let mut client = GreeterClient::connect("http://127.0.0.1:50051").await?;
-
-    let request = tonic::Request::new(HelloRequest {
-        name: "Tonic".into(),
-    });
-
-    let response = client.say_hello(request).await?;
-
-    info!("RESPONSE={:?}", response);
-
-    Ok(())
+impl<'a> Injector for MetadataInjector<'a> {
+    /// Set a key and value in the MetadataMap.  Does nothing if the key or value are not valid inputs
+    fn set(&mut self, key: &str, value: String) {
+        if let Ok(key) = MetadataKey::from_str(key) {
+            if let Ok(val) = value.parse() {
+                self.0.append(key, val);
+            }
+        }
+    }
 }
