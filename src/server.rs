@@ -7,10 +7,10 @@ use opentelemetry_semantic_conventions::{
 };
 
 use tracing::{info, instrument, Level, info_span};
-use tracing_opentelemetry::OpenTelemetryLayer;
+use tracing_opentelemetry::{OpenTelemetryLayer, OpenTelemetrySpanExt};
 use tracing_subscriber::prelude::*;
 
-use tonic::{metadata::MetadataMap, transport::Server, Request, Response, Status};
+use tonic::{transport::Server, Request, Response, Status};
 use http;
 
 use hello_world::greeter_server::{Greeter, GreeterServer};
@@ -52,22 +52,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     Server::builder()
         .trace_fn(|request: &http::Request<()>| {
-            let headers = request.headers();
-            
-            // 提取追踪上下文
             let parent_context = opentelemetry::global::get_text_map_propagator(|propagator| {
-                propagator.extract(&opentelemetry_http::HeaderExtractor(headers))
+                propagator.extract(&opentelemetry_http::HeaderExtractor(request.headers()))
             });
-            
-            // 将父上下文附加到当前线程
-            // 这样后续创建的 span 会自动关联到父上下文
-            let _guard = parent_context.attach();
-            
-            // 创建 span，它会自动使用已附加的父上下文
-            let span = info_span!("grpc_request");
-            
-            tracing::debug!("Extracted trace context from request headers");
-            
+            let span = info_span!("helloworld-service");
+            // TODO: handle set parent context err
+            let _ = span.set_parent(parent_context);
             span
         })
         .add_service(GreeterServer::new(greeter))
@@ -132,32 +122,5 @@ impl Drop for OtelGuard {
         if let Err(err) = self.tracer_provider.shutdown() {
             eprintln!("{err:?}");
         }
-    }
-}
-
-struct MetadataInjector<'a>(&'a mut MetadataMap);
-
-impl<'a> opentelemetry::propagation::Injector for MetadataInjector<'a> {
-    fn set(&mut self, key: &str, value: String) {
-        if let Ok(key) = tonic::metadata::MetadataKey::from_bytes(key.as_bytes()) {
-            if let Ok(val) = tonic::metadata::MetadataValue::try_from(&value) {
-                self.0.insert(key, val);
-            }
-        }
-    }
-}
-
-// 实现 Extractor trait 以从 metadata 中提取追踪上下文
-struct MetadataExtractor<'a>(&'a MetadataMap);
-
-impl<'a> opentelemetry::propagation::Extractor for MetadataExtractor<'a> {
-    fn get(&self, key: &str) -> Option<&str> {
-        self.0.get(key).and_then(|v| v.to_str().ok())
-    }
-
-    fn keys(&self) -> Vec<&str> {
-        // keys() 方法对于 OpenTelemetry propagator 通常不是必需的
-        // 返回空向量即可，因为 propagator 主要使用 get() 方法
-        Vec::new()
     }
 }

@@ -34,12 +34,6 @@ async fn call_service() -> Result<(), Box<dyn std::error::Error>> {
         propagator.inject_context(&context, &mut MetadataInjector(request.metadata_mut()));
     });
 
-    info!("inject_span_context, req: {:?}", request.metadata());
-    // 检查 traceparent 是否存在
-    if let Some(traceparent) = request.metadata().get("traceparent") {
-        info!("traceparent header: {:?}", traceparent);
-    }
-
     let response = client.say_hello(request).await?;
 
     info!("RESPONSE={:?}", response);
@@ -111,7 +105,6 @@ impl Drop for OtelGuard {
     }
 }
 
-// 实现 TextMap 接口以注入 metadata
 pub struct MetadataInjector<'a>(&'a mut MetadataMap);
 
 impl<'a> Injector for MetadataInjector<'a> {
