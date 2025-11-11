@@ -1,0 +1,26 @@
+version: '3.8'
+
+name: docker
+
+services:
+  # Jaeger
+  jaeger:
+    image: jaegertracing/all-in-one:latest
+    ports:
+      - "16686:16686"  # UI
+      - "4317:4317"    # OTLP gRPC (应用直接连接)
+
+  # Prometheus
+  prometheus:
+    image: prom/prometheus:latest
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+    command:
+      - '--web.enable-otlp-receiver'
+      - '--config.file=/etc/prometheus/prometheus.yml'
+
+networks:
+  default:
+    name: otel-network

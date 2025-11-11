@@ -1,0 +1,10 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  # 示例：从应用直接抓取指标
+  # 根据你的应用实际情况修改 targets
+  - job_name: 'helloworld'
+    static_configs:
+      - targets: ['localhost:8080']  # 替换为你的应用指标端点

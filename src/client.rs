@@ -1,6 +1,6 @@
 use std::str::FromStr;
 
-use opentelemetry::{propagation::Injector, trace::TracerProvider};
+use opentelemetry::{global, propagation::Injector, trace::TracerProvider};
 use opentelemetry::KeyValue;
 use opentelemetry_sdk::{propagation::TraceContextPropagator, trace::SdkTracerProvider, Resource};
 use opentelemetry_semantic_conventions::{
@@ -9,6 +9,8 @@ use opentelemetry_semantic_conventions::{
 };
 
 use tonic::metadata::{MetadataKey, MetadataMap};
+use tonic::transport::Endpoint;
+use tonic::{Request, Status};
 
 use tracing::{info, instrument, Level};
 use tracing_opentelemetry::{OpenTelemetryLayer, OpenTelemetrySpanExt};
@@ -21,18 +23,32 @@ pub mod hello_world {
     tonic::include_proto!("helloworld");
 }
 
-#[instrument(fields(otel.kind = "client", otel.name = "test.helloworld/CallSayHello"))]
+#[instrument(fields(
+    otel.kind = "client",
+    otel.name = "test.helloworld/CallSayHello",
+    rpc.system = "grpc",
+    server.address = "127.0.0.1",
+    server.port = 50051,
+    network.protocol.name = "http",
+    network.protocol.version = "2",
+    network.transport = "tcp",
+    rpc.method = "SayHello",
+    rpc.service = "test.helloworld",
+))]
 async fn call_service() -> Result<(), Box<dyn std::error::Error>> {
-    let mut client = GreeterClient::connect("http://127.0.0.1:50051").await?;
+    let endpoint = Endpoint::from_str("http://127.0.0.1:50051").unwrap();
+    let channel = endpoint.connect().await?;
+    
+    let mut client = GreeterClient::with_interceptor(channel, send_trace);
 
-    let mut request = tonic::Request::new(HelloRequest {
+    let request = tonic::Request::new(HelloRequest {
         name: "Tonic".into(),
     });
 
-    opentelemetry::global::get_text_map_propagator(|propagator| {
-        let context = tracing::Span::current().context();
-        propagator.inject_context(&context, &mut MetadataInjector(request.metadata_mut()));
-    });
+    // opentelemetry::global::get_text_map_propagator(|propagator| {
+    //     let context = tracing::Span::current().context();
+    //     propagator.inject_context(&context, &mut MetadataInjector(request.metadata_mut()));
+    // });
 
     let response = client.say_hello(request).await?;
 
@@ -116,4 +132,13 @@ impl<'a> Injector for MetadataInjector<'a> {
             }
         }
     }
+}
+
+pub fn send_trace<T>(mut request: Request<T>) -> Result<Request<T>, Status> {
+    global::get_text_map_propagator(|propagator| {
+        let context = tracing::Span::current().context();
+        propagator.inject_context(&context, &mut MetadataInjector(request.metadata_mut()))
+    });
+
+    Ok(request)
 }
