@@ -54,7 +54,7 @@ impl Greeter for MyGreeter {
     ) -> Result<Response<HelloReply>, Status> {
         info!("Got a request: {:?}", request);
 
-        self.request_counter.add(1, &[]);
+        self.request_counter.add(1, &[KeyValue::new("key", "value")]);
 
         let reply = HelloReply {
             message: format!("Hello {}!", request.into_inner().name),
