@@ -1,5 +1,5 @@
-use opentelemetry::KeyValue;
 use opentelemetry::metrics::Counter;
+use opentelemetry::KeyValue;
 use opentelemetry::{global, trace::TracerProvider};
 use opentelemetry_otlp::{Protocol, WithExportConfig};
 use opentelemetry_sdk::metrics::SdkMeterProvider;
@@ -54,7 +54,8 @@ impl Greeter for MyGreeter {
     ) -> Result<Response<HelloReply>, Status> {
         info!("Got a request: {:?}", request);
 
-        self.request_counter.add(1, &[KeyValue::new("key", "value")]);
+        self.request_counter
+            .add(1, &[KeyValue::new("key", "value")]);
 
         let reply = HelloReply {
             message: format!("Hello {}!", request.into_inner().name),
@@ -104,8 +105,7 @@ fn resource() -> Resource {
 
 fn init_tracer_provider() -> SdkTracerProvider {
     let exporter = opentelemetry_otlp::SpanExporter::builder()
-        .with_http()
-        .with_protocol(Protocol::HttpBinary)
+        .with_tonic()
         .build()
         .unwrap();
 

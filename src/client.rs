@@ -1,8 +1,7 @@
 use std::str::FromStr;
 
-use opentelemetry::{global, propagation::Injector, trace::TracerProvider};
 use opentelemetry::KeyValue;
-use opentelemetry_otlp::{Protocol, WithExportConfig};
+use opentelemetry::{global, propagation::Injector, trace::TracerProvider};
 use opentelemetry_sdk::{propagation::TraceContextPropagator, trace::SdkTracerProvider, Resource};
 use opentelemetry_semantic_conventions::{
     attribute::{DEPLOYMENT_ENVIRONMENT_NAME, SERVICE_VERSION},
@@ -39,7 +38,7 @@ pub mod hello_world {
 async fn call_service() -> Result<(), Box<dyn std::error::Error>> {
     let endpoint = Endpoint::from_str("http://127.0.0.1:50051").unwrap();
     let channel = endpoint.connect().await?;
-    
+
     let mut client = GreeterClient::with_interceptor(channel, send_trace);
 
     let request = tonic::Request::new(HelloRequest {
@@ -75,8 +74,7 @@ fn resource() -> Resource {
 
 fn init_tracer_provider() -> SdkTracerProvider {
     let exporter = opentelemetry_otlp::SpanExporter::builder()
-        .with_http()
-        .with_protocol(Protocol::HttpBinary)
+        .with_tonic()
         .build()
         .unwrap();
 
@@ -139,3 +137,4 @@ pub fn send_trace<T>(mut request: Request<T>) -> Result<Request<T>, Status> {
 
     Ok(request)
 }
+
