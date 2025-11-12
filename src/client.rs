@@ -2,6 +2,7 @@ use std::str::FromStr;
 
 use opentelemetry::{global, propagation::Injector, trace::TracerProvider};
 use opentelemetry::KeyValue;
+use opentelemetry_otlp::{Protocol, WithExportConfig};
 use opentelemetry_sdk::{propagation::TraceContextPropagator, trace::SdkTracerProvider, Resource};
 use opentelemetry_semantic_conventions::{
     attribute::{DEPLOYMENT_ENVIRONMENT_NAME, SERVICE_VERSION},
@@ -45,11 +46,6 @@ async fn call_service() -> Result<(), Box<dyn std::error::Error>> {
         name: "Tonic".into(),
     });
 
-    // opentelemetry::global::get_text_map_propagator(|propagator| {
-    //     let context = tracing::Span::current().context();
-    //     propagator.inject_context(&context, &mut MetadataInjector(request.metadata_mut()));
-    // });
-
     let response = client.say_hello(request).await?;
 
     info!("RESPONSE={:?}", response);
@@ -79,7 +75,8 @@ fn resource() -> Resource {
 
 fn init_tracer_provider() -> SdkTracerProvider {
     let exporter = opentelemetry_otlp::SpanExporter::builder()
-        .with_tonic()
+        .with_http()
+        .with_protocol(Protocol::HttpBinary)
         .build()
         .unwrap();
 

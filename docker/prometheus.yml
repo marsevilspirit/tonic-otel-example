@@ -3,8 +3,10 @@ global:
   evaluation_interval: 15s
 
 scrape_configs:
-  # 示例：从应用直接抓取指标
-  # 根据你的应用实际情况修改 targets
-  - job_name: 'helloworld'
+  - job_name: 'prometheus'
     static_configs:
-      - targets: ['localhost:8080']  # 替换为你的应用指标端点
+      - targets: ['localhost:9090']
+
+  - job_name: 'otel-collector'
+    static_configs:
+      - targets: ['otel-collector:8889']

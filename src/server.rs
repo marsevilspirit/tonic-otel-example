@@ -104,7 +104,8 @@ fn resource() -> Resource {
 
 fn init_tracer_provider() -> SdkTracerProvider {
     let exporter = opentelemetry_otlp::SpanExporter::builder()
-        .with_tonic()
+        .with_http()
+        .with_protocol(Protocol::HttpBinary)
         .build()
         .unwrap();
 
