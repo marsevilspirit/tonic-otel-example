@@ -117,9 +117,8 @@ fn init_tracer_provider() -> SdkTracerProvider {
 
 fn init_meter_provider() -> SdkMeterProvider {
     let exporter = opentelemetry_otlp::MetricExporter::builder()
-        .with_http()
-        .with_protocol(Protocol::HttpBinary)
-        .with_endpoint("http://localhost:9090/api/v1/otlp/v1/metrics")
+        .with_tonic()
+        .with_endpoint("http://localhost:4317")
         .with_temporality(opentelemetry_sdk::metrics::Temporality::default())
         .build()
         .unwrap();
@@ -161,17 +160,22 @@ fn init_tracing_subscriber() -> OtelGuard {
 
     OtelGuard {
         tracer_provider: tracer_provider,
+        meter_provider: meter_provider,
     }
 }
 
 struct OtelGuard {
     tracer_provider: SdkTracerProvider,
+    meter_provider: SdkMeterProvider,
 }
 
 impl Drop for OtelGuard {
     fn drop(&mut self) {
         if let Err(err) = self.tracer_provider.shutdown() {
-            eprintln!("{err:?}");
+            eprintln!("Error shutting down tracer provider: {err:?}");
+        }
+        if let Err(err) = self.meter_provider.shutdown() {
+            eprintln!("Error shutting down meter provider: {err:?}");
         }
     }
 }
