@@ -1,5 +1,5 @@
 mod log;
 pub mod manager;
-mod metric;
+pub mod metric;
 mod resource;
-mod trace;
+pub mod trace;

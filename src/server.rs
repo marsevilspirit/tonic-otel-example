@@ -3,13 +3,14 @@ use opentelemetry::metrics::Counter;
 use opentelemetry::KeyValue;
 
 use tonic::{transport::Server, Request, Response, Status};
-use tracing::{info, info_span, instrument};
-use tracing_opentelemetry::OpenTelemetrySpanExt;
+use tracing::{info, instrument};
 
 use hello_world::greeter_server::{Greeter, GreeterServer};
 use hello_world::{HelloReply, HelloRequest};
 
 use tonic_helloworld::telemetry::manager::init_telemetry_manager;
+use tonic_helloworld::telemetry::metric::middleware::MetricLayer;
+use tonic_helloworld::telemetry::trace::middleware::TraceLayer;
 
 pub mod hello_world {
     tonic::include_proto!("helloworld"); // The string specified here must match the proto package name
@@ -60,16 +61,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let addr = "127.0.0.1:50051".parse()?;
     let greeter = MyGreeter::new();
 
+    let layer = tower::ServiceBuilder::new()
+        .layer(TraceLayer::new())
+        .layer(MetricLayer::new())
+        .into_inner();
+
     Server::builder()
-        .trace_fn(|request: &http::Request<()>| {
-            let parent_context = opentelemetry::global::get_text_map_propagator(|propagator| {
-                propagator.extract(&opentelemetry_http::HeaderExtractor(request.headers()))
-            });
-            let span = info_span!("helloworld-service");
-            // TODO: handle set parent context err
-            let _ = span.set_parent(parent_context);
-            span
-        })
+        .layer(layer)
         .add_service(GreeterServer::new(greeter))
         .serve(addr)
         .await?;
