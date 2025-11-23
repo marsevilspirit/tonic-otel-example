@@ -18,7 +18,7 @@ impl MetricLayer {
             .f64_histogram("rpc.server.duration")
             .with_description("Duration of RPC server requests")
             .with_unit("ms")
-            .build();
+            .init();
         Self { histogram }
     }
 }

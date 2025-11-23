@@ -13,27 +13,34 @@ path = "src/client.rs"
 
 [dependencies]
 http = "1.0"
-tonic = "*"
-prost = "0.14"
-tonic-prost = "*"
+tonic = "0.12.3"
+prost = "0.13"
 tokio = { version = "1.0", features = ["macros", "rt-multi-thread"] }
 tower = "0.5"
 
 tracing = "0.1"
-tracing-subscriber = { version = "0.3", features = ["fmt", "env-filter", "registry"] }
+tracing-subscriber = { version = "0.3", features = [
+    "fmt",
+    "env-filter",
+    "registry",
+] }
 
-opentelemetry =  "0.31"
-tracing-opentelemetry = "0.32"
-opentelemetry_sdk = { version = "0.31", features = ["rt-tokio"] }
-opentelemetry-otlp = { version = "0.31", features = ["grpc-tonic"] }
-opentelemetry-http = "0.31"
-opentelemetry-stdout = "0.31"
+opentelemetry = "0.26"
+tracing-opentelemetry = "0.27"
+opentelemetry_sdk = { version = "0.26", features = ["rt-tokio"] }
+opentelemetry-otlp = { version = "0.26", features = [
+    "grpc-tonic",
+    "http",
+    "metrics",
+] }
+opentelemetry-http = "0.26"
+opentelemetry-stdout = "0.26"
 
-opentelemetry-appender-tracing = { version = "0.31", features = ["experimental_use_tracing_span_context"] }
+opentelemetry-appender-tracing = { version = "0.26" }
 
-opentelemetry-semantic-conventions = { version = "0.31.0", features = [
+opentelemetry-semantic-conventions = { version = "0.26", features = [
     "semconv_experimental",
 ] }
 
 [build-dependencies]
-tonic-prost-build = "*"
+tonic-build = "0.12"

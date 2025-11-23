@@ -24,7 +24,7 @@ pub struct MyGreeter {
 impl MyGreeter {
     pub fn new() -> Self {
         let meter = global::meter("helloworld-server");
-        let counter = meter.u64_counter("greeter.requests_total").build();
+        let counter = meter.u64_counter("greeter.requests_total").init();
         Self {
             request_counter: counter,
         }

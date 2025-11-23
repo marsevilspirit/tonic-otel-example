@@ -1,7 +1,7 @@
 use opentelemetry::trace::TracerProvider;
 use opentelemetry_sdk::metrics::SdkMeterProvider;
 use opentelemetry_sdk::propagation::TraceContextPropagator;
-use opentelemetry_sdk::trace::SdkTracerProvider;
+use opentelemetry_sdk::trace::TracerProvider as SdkTracerProvider;
 use tracing::Level;
 use tracing_opentelemetry::MetricsLayer;
 use tracing_opentelemetry::OpenTelemetryLayer;
